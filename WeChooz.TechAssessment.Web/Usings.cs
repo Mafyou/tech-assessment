@@ -1,0 +1,11 @@
+﻿global using Microsoft.AspNetCore.Authentication;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.EntityFrameworkCore;
+global using System.Security.Claims;
+global using System.Text.Json.Serialization;
+global using WeChooz.TechAssessment.Infrastructure.Context;
+global using WeChooz.TechAssessment.Infrastructure.Entities;
+global using WeChooz.TechAssessment.Infrastructure.Extensions;
+global using WeChooz.TechAssessment.Infrastructure.ValueObjets;
+global using WeChooz.TechAssessment.Web.CourseSlice.Delete;
+global using WeChooz.TechAssessment.Web.Transport;

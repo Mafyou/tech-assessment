@@ -10,16 +10,20 @@ builder.AddServiceDefaults();
 var sqlServerConnectionString = builder.Configuration.GetConnectionString("formation") ?? throw new InvalidOperationException("Connection string 'formation' not found.");
 var redisConnectionString = builder.Configuration.GetConnectionString("cache") ?? throw new InvalidOperationException("Connection string 'cache' not found.");
 
+builder.Services.AddDbContextServices(sqlServerConnectionString);
+
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RazorViewEngineOptions>(options =>
 {
     options.ViewLocationFormats.Add("/{1}/_Views/{0}" + RazorViewEngine.ViewExtension);
 });
 builder.Services.AddAuthentication("Cookies")
-    .AddCookie("Cookies", options =>
-    {
-        options.Cookie.Name = "AspireAuthCookie";
-    });
+.AddCookie("Cookies", options =>
+{
+    options.Cookie.Name = "AspireAuthCookie";
+    options.LoginPath = "/login";
+    options.AccessDeniedPath = "/login";
+});
 builder.Services.AddAuthorization(options =>
 {
     var defaultPolicy = new AuthorizationPolicyBuilder()
@@ -51,15 +55,26 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseAntiforgery();
-
 app.MapStaticAssets();
 
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapDefaultEndpoints();
 
 app.MapControllers();
 
+app.MapControllerRoute(
+        name: "fallback_login",
+        pattern: "login/{*subpath}",
+        constraints: new { subpath = @"^(?!swagger).*$" },
+        defaults: new { controller = "Login", action = "Handle" }
+);
+app.MapControllerRoute(
+        name: "fallback_login_root",
+        pattern: "login/",
+        defaults: new { controller = "Login", action = "Handle" }
+    );
 app.MapControllerRoute(
         name: "fallback_admin",
         pattern: "admin/{*subpath}",
@@ -88,4 +103,19 @@ if (app.Environment.IsDevelopment())
     app.UseWebSockets();
     app.UseViteDevelopmentServer(true);
 }
+
+// Seed the database
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<WeChoozContext>();
+    // En développement : supprime et recrée la base avec le nouveau schéma
+    if (app.Environment.IsDevelopment())
+    {
+        await context.Database.EnsureDeletedAsync();
+    }
+    await context.Database.EnsureCreatedAsync();
+    await context.Database.MigrateAsync();
+    await DbSeeder.SeedAsync(context);
+}
+
 app.Run();
